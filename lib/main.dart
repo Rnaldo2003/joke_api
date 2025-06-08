@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:confetti/confetti.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 void main() {
   runApp(const MyApp());
@@ -14,7 +16,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange),
         useMaterial3: true,
-        fontFamily: 'ComicNeue', // Puedes agregar una fuente divertida si quieres
+        fontFamily: 'ComicNeue',
       ),
       home: const JokeHomePage(),
       debugShowCheckedModeBanner: false,
@@ -39,11 +41,28 @@ class _JokeHomePageState extends State<JokeHomePage> {
   ];
 
   int currentJoke = 0;
+  late ConfettiController _confettiController;
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
-  void showNextJoke() {
+  @override
+  void initState() {
+    super.initState();
+    _confettiController = ConfettiController(duration: const Duration(seconds: 1));
+  }
+
+  @override
+  void dispose() {
+    _confettiController.dispose();
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
+  void showNextJoke() async {
     setState(() {
       currentJoke = (currentJoke + 1) % jokes.length;
     });
+    _confettiController.play();
+    await _audioPlayer.play(AssetSource('sounds/funny.mp3'));
   }
 
   @override
@@ -63,49 +82,79 @@ class _JokeHomePageState extends State<JokeHomePage> {
         centerTitle: true,
         elevation: 0,
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Card(
-            elevation: 8,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-            color: Colors.white,
+      body: Stack(
+        alignment: Alignment.center,
+        children: [
+          Center(
             child: Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.emoji_emotions,
-                    color: Colors.orange,
-                    size: 64,
+              padding: const EdgeInsets.all(24.0),
+              child: Card(
+                elevation: 12,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
+                color: Colors.white,
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 500),
+                        transitionBuilder: (child, animation) => ScaleTransition(scale: animation, child: child),
+                        child: Icon(
+                          Icons.emoji_emotions,
+                          key: ValueKey<int>(currentJoke),
+                          color: Colors.orange,
+                          size: 80,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 500),
+                        transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
+                        child: Text(
+                          jokes[currentJoke],
+                          key: ValueKey<int>(currentJoke),
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.black87,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      ElevatedButton.icon(
+                        onPressed: showNextJoke,
+                        icon: const Icon(Icons.emoji_emotions, color: Colors.white, size: 28),
+                        label: const Text(
+                          "¡Otro chiste!",
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                          elevation: 6,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 24),
-                  Text(
-                    jokes[currentJoke],
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.black87,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+                ),
               ),
             ),
           ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: showNextJoke,
-        backgroundColor: Colors.orange,
-        child: const Icon(
-          Icons.emoji_emotions,
-          color: Colors.white,
-          size: 36,
-        ),
-        tooltip: '¡Muéstrame un chiste!',
-        shape: const CircleBorder(),
+          ConfettiWidget(
+            confettiController: _confettiController,
+            blastDirectionality: BlastDirectionality.explosive,
+            shouldLoop: false,
+            emissionFrequency: 0.05,
+            numberOfParticles: 20,
+            maxBlastForce: 20,
+            minBlastForce: 8,
+            gravity: 0.3,
+            colors: const [Colors.orange, Colors.yellow, Colors.red, Colors.pink, Colors.green],
+          ),
+        ],
       ),
     );
   }
